@@ -1,0 +1,33 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+*.binlog
+[Ll]og/
+[Ll]ogs/
+
+# .NET / Rider / VS user files
+*.user
+*.suo
+.vs/
+.idea/
+
+# Test results
+[Tt]est[Rr]esults/
+*.trx
+coverage*.json
+coverage*.xml
+
+# Local secrets / environment
+*.env
+secrets.json
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Word lock / temp files
+~$*.docx
+~WRL*.tmp

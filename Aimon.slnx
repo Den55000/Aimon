@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Aimon.Application/Aimon.Application.csproj" />
+    <Project Path="src/Aimon.Desktop/Aimon.Desktop.csproj" />
+    <Project Path="src/Aimon.Domain/Aimon.Domain.csproj" />
+    <Project Path="src/Aimon.Infrastructure/Aimon.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Aimon.Application.Tests/Aimon.Application.Tests.csproj" />
+    <Project Path="tests/Aimon.Domain.Tests/Aimon.Domain.Tests.csproj" />
+    <Project Path="tests/Aimon.Infrastructure.Tests/Aimon.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

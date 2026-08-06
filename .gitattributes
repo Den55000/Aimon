@@ -1,0 +1,33 @@
+# Normalize line endings: store LF in the repo, check out native on each OS.
+* text=auto
+
+# Source & config (explicit for clarity)
+*.cs            text diff=csharp
+*.csproj        text
+*.slnx          text
+*.sln           text
+*.props         text
+*.targets       text
+*.json          text
+*.xml           text
+*.axaml         text
+*.md            text
+*.editorconfig  text
+*.gitattributes text
+*.gitignore     text
+
+# Scripts: pin endings so they stay runnable on their platform
+*.ps1  text eol=crlf
+*.sh   text eol=lf
+
+# Binary assets (no diff/merge, no EOL conversion)
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.docx  binary
+*.pdf   binary
+*.zip   binary
+*.dll   binary
+*.exe   binary
