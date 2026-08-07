@@ -27,7 +27,7 @@ public partial class App : Avalonia.Application
         {
             desktop.MainWindow = new MainWindow
             {
-                DataContext = provider.GetRequiredService<MainViewModel>(),
+                DataContext = provider.GetRequiredService<ShellViewModel>(),
             };
         }
 
@@ -44,5 +44,7 @@ public partial class App : Avalonia.Application
         services.AddAimonInfrastructure();
 
         services.AddTransient<MainViewModel>();
+        services.AddTransient<ProfileCompilerViewModel>();
+        services.AddTransient<ShellViewModel>();
     }
 }

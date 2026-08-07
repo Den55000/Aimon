@@ -1,46 +1,28 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Aimon.Desktop.ViewModels"
+        xmlns:views="using:Aimon.Desktop.Views"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="560"
         x:Class="Aimon.Desktop.Views.MainWindow"
-        x:DataType="vm:MainViewModel"
+        x:DataType="vm:ShellViewModel"
         Icon="/Assets/avalonia-logo.ico"
         Width="820" Height="560"
         Title="Aimon">
 
     <Design.DataContext>
         <!-- Previewer DataContext only; the runtime DataContext is set via DI in App.axaml.cs. -->
-        <vm:MainViewModel />
+        <vm:ShellViewModel />
     </Design.DataContext>
 
-    <Grid Margin="12" RowDefinitions="Auto,*,Auto">
-
-        <!-- Settings: API key, model, and the live agent state -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-            <TextBox Width="260" PlaceholderText="OpenAI API key" PasswordChar="•" Text="{Binding ApiKey}" />
-            <Button Content="Save key" Command="{Binding SaveKeyCommand}" />
-            <TextBox Width="150" PlaceholderText="Model" Text="{Binding Model}" />
-            <TextBlock VerticalAlignment="Center" FontWeight="SemiBold"
-                       Text="{Binding StateLabel, StringFormat='State: {0}'}" />
-        </StackPanel>
-
-        <!-- Streamed transcript -->
-        <Border Grid.Row="1" BorderBrush="#40808080" BorderThickness="1" CornerRadius="6">
-            <TextBox Text="{Binding Transcript}"
-                     IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                     Background="Transparent" BorderThickness="0"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto" />
-        </Border>
-
-        <!-- Input -->
-        <Grid Grid.Row="2" Margin="0,8,0,0" ColumnDefinitions="*,Auto">
-            <TextBox Grid.Column="0" PlaceholderText="Type a message…" Text="{Binding Input}" />
-            <Button Grid.Column="1" Margin="8,0,0,0" Content="Send"
-                    Command="{Binding SendCommand}" IsDefault="True" />
-        </Grid>
-
-    </Grid>
+    <TabControl Margin="6">
+        <TabItem Header="Chat">
+            <views:ChatView DataContext="{Binding Chat}" />
+        </TabItem>
+        <TabItem Header="Profile Compiler">
+            <views:ProfileCompilerView DataContext="{Binding Compiler}" />
+        </TabItem>
+    </TabControl>
 
 </Window>
