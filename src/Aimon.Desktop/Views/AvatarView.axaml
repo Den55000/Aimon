@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aimon.Desktop.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="170" d:DesignHeight="220"
+             x:Class="Aimon.Desktop.Views.AvatarView"
+             x:DataType="vm:AvatarViewModel">
+
+    <Design.DataContext>
+        <vm:AvatarViewModel />
+    </Design.DataContext>
+
+    <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Grid Width="150" Height="150">
+            <Ellipse Width="{Binding AvatarDiameter}" Height="{Binding AvatarDiameter}"
+                     Fill="{Binding AvatarBrush}"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Grid>
+        <TextBlock Text="{Binding StateLabel}" HorizontalAlignment="Center" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding FrameLabel}" HorizontalAlignment="Center" FontSize="12" Opacity="0.6" />
+    </StackPanel>
+
+</UserControl>

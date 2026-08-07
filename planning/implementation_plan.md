@@ -377,6 +377,29 @@ store. The fuller profile **manager** (edit / import / export / switch active pr
 per state and clean transitions, incl. `Error`); headless render/VM test; demo: run a conversation
 and watch the avatar move through Idle/Listening/Working/Error.
 
+**Status (2026-08-07): ✅ Done.** The avatar reacts to the AI's semantic state. **Graphics Compiler**:
+`FileGraphicsCompiler` (`IGraphicsCompiler`, Infrastructure) packages a folder of authored frames into
+an `AnimationLibrary` — it reads an authoritative `manifest.json` (keyed by `AgentState`, with
+frames/fps/loop) when present, otherwise discovers frames by convention (one subfolder per state) and
+**writes a manifest so the folder becomes a self-describing library**; every referenced frame must
+exist or compilation fails. **Graphics Engine**: `FrameSequencer` (`IGraphicsEngine`, Application) is a
+deterministic frame-per-state player — it selects the frame set for the current state (**falling back
+to Idle** when a state is unmapped) and steps frames on demand (looping, or holding the last frame of a
+one-shot set); all timing is external so the sequencing is unit-testable without a UI. **Desktop**: an
+`AvatarView`/`AvatarViewModel` sits beside the chat, drives the engine with a dispatcher timer clocked
+at each set's fps, and — per D1 "reactions first" — draws a **state-coloured, pulsing placeholder**
+(a real bitmap frame renderer is a later drop-in behind the same engine). `MainViewModel` forwards the
+turn's `AgentState` changes to the avatar (Listening on send → Working while streaming → Idle, or Error
+on a block/failure). A **sample library** ships at `samples/graphics/default-avatar/` (manifest + SVG
+placeholder frames for all four states). Verified: `dotnet build -c Release` → 0 warnings / 0 errors;
+`dotnet test` → 86/86 passing — the engine suite (per-state selection, Idle fallback, looping,
+one-shot hold, a scripted Idle→Working→Error→Idle sequence, inert-before-load, `FrameChanged` events)
+and the compiler suite (convention scan, manifest write, authoritative manifest with overrides, missing
+frame + no-frame failures, plus a guard that the bundled sample compiles with a frame set per state).
+The headless render/VM test is deferred with the rest of the Desktop test harness; the sequencing logic
+it would cover lives in `FrameSequencer` and is fully unit-tested. Demo: run a conversation and watch
+the avatar move Idle → Listening → Working → Idle (and to Error on a blocked/failed turn).
+
 ### Phase 7 — Desktop UX integration
 **Goal:** a cohesive application, not a set of parts.
 

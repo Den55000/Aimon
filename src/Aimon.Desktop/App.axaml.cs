@@ -43,6 +43,7 @@ public partial class App : Avalonia.Application
         services.AddAimonApplication();
         services.AddAimonInfrastructure();
 
+        services.AddTransient<AvatarViewModel>();
         services.AddTransient<MainViewModel>();
         services.AddTransient<ProfileCompilerViewModel>();
         services.AddTransient<ShellViewModel>();
