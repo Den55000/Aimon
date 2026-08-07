@@ -307,6 +307,22 @@ plus no-key/non-success error paths and the request-shape check. A **gated live 
 **Acceptance / test:** deterministic reducer unit-tested (bounded size, retains key facts across
 N turns); demo of a multi-turn conversation that references earlier context.
 
+**Status (2026-08-07): ✅ Done.** The pipeline loop is closed. `ConversationStateReducer`
+(`IConversationStateReducer`, Application) is a **deterministic, model-free** fold: each completed
+`Exchange` bumps `TurnCount`, pulls first-person / "remember" sentences from the user message into a
+**bounded** `SalientFacts` list (deduped, newest-wins, capped) and extends a length-bounded rolling
+`Summary`. `ChatService` now accumulates the assistant text and final `AgentState` as it passes the
+provider stream through, then reduces the turn and surfaces the new `ConversationState` as a terminal
+`conversation` `ProviderEvent`; a **blocked turn leaves state untouched** (no event). The Router
+already bakes `ConversationState` into the system prompt (via `SystemPromptBuilder`), so the Desktop
+VM simply holds the running state, adopts each `conversation` event, and feeds it into the next
+`SendMessageRequest` — earlier context (e.g. the user's name/preferences) now survives across turns.
+Verified: `dotnet build -c Release` → 0 warnings / 0 errors; `dotnet test` → 62/62 passing — the new
+reducer suite covers turn-count increment, first-person fact capture, transient-question rejection,
+fact retention across N intervening turns, identical-fact dedupe, and **bounded fact-list + summary**
+over a 50-turn conversation; `ChatService` tests assert the reduced-state event on the happy path and
+its absence on a block.
+
 ### Phase 5 — Profile Compiler (NL → structured, review/confirm loop)
 **Goal:** users author profiles in plain language with AI assistance.
 

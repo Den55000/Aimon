@@ -23,6 +23,9 @@ public partial class MainViewModel : ViewModelBase
     private readonly ISecretStore? _secretStore;
     private CancellationTokenSource? _sendCts;
 
+    // The compact running state the reducer folds each turn into; fed back into the next turn's Router.
+    private ConversationState _conversationState = ConversationState.Empty;
+
     [ObservableProperty]
     public partial string ApiKey { get; set; }
 
@@ -94,7 +97,7 @@ public partial class MainViewModel : ViewModelBase
             var request = new SendMessageRequest
             {
                 Profile = BuildProfile(Model.Trim()),
-                ConversationState = ConversationState.Empty,
+                ConversationState = _conversationState,
                 UserMessage = Message.User(userText),
             };
 
@@ -107,6 +110,9 @@ public partial class MainViewModel : ViewModelBase
                         break;
                     case ProviderStreamItem.StateChange stateChange:
                         StateLabel = stateChange.State.ToString();
+                        break;
+                    case ProviderStreamItem.ProviderEvent { Kind: "conversation", Payload: ConversationState next }:
+                        _conversationState = next;
                         break;
                     case ProviderStreamItem.ProviderEvent { Kind: "blocked" } blocked:
                         AppendLine($"[blocked: {blocked.Payload}]");
