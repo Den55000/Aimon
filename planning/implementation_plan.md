@@ -335,6 +335,30 @@ its absence on a block.
 schema validation of compiler output; demo: describe a persona in prose → get a structured draft →
 revise once → confirm → persisted (both natural + structured).
 
+**Status (2026-08-07): ✅ Done.** Users can author profiles from prose. The `IProfileCompiler` port
+now takes a `ProfileCompilationRequest` (description, plus an optional previous draft + revision
+instruction), and `OpenAIProfileCompiler` (Infrastructure) implements it against OpenAI with a
+**configurable compiler model** (`ProfileCompilerOptions`, BYO key from the `ISecretStore`),
+requesting a JSON-object response and mapping it **through the Domain value objects** so malformed
+output surfaces as a validation error. The **review/confirm/revise state machine** lives in
+`Aimon.Application/Authoring`: `IProfileDraftSessionFactory.BeginAsync` compiles the first draft and
+returns a `ProfileDraftSession` that the user `ReviseAsync`es (each call recompiles from the previous
+draft + instruction, bumping `RevisionCount`) until `ConfirmAsync` — which **persists the
+natural-language source and structured draft together** via `IProfileStore` and closes the session.
+`ProfileDraftValidator` gives the "schema validation of compiler output" gate: a draft with no
+personality/rules (or a task style missing a name) is flagged, and **confirm is refused while
+invalid** so a malformed profile is never stored. Model choice is intentionally left out of the
+compiled output (it's a separate, user-driven concern). Verified: `dotnet build -c Release` → 0
+warnings / 0 errors; `dotnet test` → 73/73 passing — the state-machine suite (first compile, revise
+recompiles from the prior draft + instruction, confirm persists natural + structured, confirm rejected
+while invalid then succeeds after a revision, no changes after confirm) with a mock compiler +
+in-memory store, and the OpenAI compiler contract tests (JSON → structured mapping, a request shape
+carrying `response_format`, the configured model and `stream:false`, a revision that includes the
+prior draft and instruction, and no-key and non-success errors). A **gated live smoke test** compiles
+a persona from prose when
+`AIMON_OPENAI_API_KEY` is set. The authoring **UI** is deferred to Phase 7 (Desktop UX integration),
+which wires the profile manager onto this use case.
+
 ### Phase 6 — Graphics Compiler + Graphics Engine (state-driven frames)
 **Goal:** the avatar reacts to the AI's semantic state — the core differentiator.
 

@@ -1,4 +1,5 @@
 using Aimon.Application.Abstractions;
+using Aimon.Application.Authoring;
 using Aimon.Application.Pipeline;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,8 +10,8 @@ public static class DependencyInjection
 {
     /// <summary>
     /// Registers the Application-layer use cases: the Router, Interpreter, Conversation State Reducer,
-    /// and the ChatService that orchestrates a turn. The provider (<c>IAiProvider</c>) is supplied by
-    /// Infrastructure.
+    /// the ChatService that orchestrates a turn, and the Profile Compiler authoring session factory.
+    /// The provider (<c>IAiProvider</c>), profile store, and compiler are supplied by Infrastructure.
     /// </summary>
     public static IServiceCollection AddAimonApplication(this IServiceCollection services)
     {
@@ -18,6 +19,7 @@ public static class DependencyInjection
         services.AddTransient<IInterpreter, Interpreter>();
         services.AddTransient<IConversationStateReducer, ConversationStateReducer>();
         services.AddTransient<IChatService, ChatService>();
+        services.AddTransient<IProfileDraftSessionFactory, ProfileDraftSessionFactory>();
         return services;
     }
 }

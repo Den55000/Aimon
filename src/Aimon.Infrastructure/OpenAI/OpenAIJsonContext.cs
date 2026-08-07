@@ -6,4 +6,5 @@ namespace Aimon.Infrastructure.OpenAI;
 [JsonSourceGenerationOptions(DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(OpenAIChatRequest))]
 [JsonSerializable(typeof(OpenAIStreamChunk))]
+[JsonSerializable(typeof(OpenAIChatResponse))]
 internal sealed partial class OpenAIJsonContext : JsonSerializerContext;

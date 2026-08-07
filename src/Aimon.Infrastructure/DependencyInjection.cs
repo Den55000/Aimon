@@ -1,4 +1,5 @@
 using Aimon.Application.Abstractions;
+using Aimon.Infrastructure.Compilation;
 using Aimon.Infrastructure.OpenAI;
 using Aimon.Infrastructure.Persistence;
 using Aimon.Infrastructure.Secrets;
@@ -10,9 +11,9 @@ namespace Aimon.Infrastructure;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Registers Infrastructure adapters: the on-disk profile store, the DPAPI secret store, and the
-    /// OpenAI streaming provider (as a typed <c>HttpClient</c>). Storage defaults to the current
-    /// user's application-data folder.
+    /// Registers Infrastructure adapters: the on-disk profile store, the DPAPI secret store, the
+    /// OpenAI streaming provider, and the OpenAI-backed Profile Compiler (both as typed
+    /// <c>HttpClient</c>s). Storage defaults to the current user's application-data folder.
     /// </summary>
     public static IServiceCollection AddAimonInfrastructure(this IServiceCollection services)
     {
@@ -26,6 +27,14 @@ public static class DependencyInjection
         services.AddHttpClient<IAiProvider, OpenAIProvider>((serviceProvider, client) =>
         {
             var options = serviceProvider.GetRequiredService<OpenAIProviderOptions>();
+            client.BaseAddress = new Uri(options.BaseAddress);
+            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+        });
+
+        services.AddSingleton(ProfileCompilerOptions.Default());
+        services.AddHttpClient<IProfileCompiler, OpenAIProfileCompiler>((serviceProvider, client) =>
+        {
+            var options = serviceProvider.GetRequiredService<ProfileCompilerOptions>();
             client.BaseAddress = new Uri(options.BaseAddress);
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
         });

@@ -18,6 +18,8 @@ internal sealed class OpenAIChatRequest
     [JsonPropertyName("top_p")] public double? TopP { get; set; }
 
     [JsonPropertyName("max_completion_tokens")] public int? MaxCompletionTokens { get; set; }
+
+    [JsonPropertyName("response_format")] public OpenAIResponseFormat? ResponseFormat { get; set; }
 }
 
 internal sealed class OpenAIChatMessage
@@ -25,6 +27,23 @@ internal sealed class OpenAIChatMessage
     [JsonPropertyName("role")] public string Role { get; set; } = "";
 
     [JsonPropertyName("content")] public string Content { get; set; } = "";
+}
+
+/// <summary>Constrains the model's output, e.g. <c>{"type":"json_object"}</c> for JSON-only replies.</summary>
+internal sealed class OpenAIResponseFormat
+{
+    [JsonPropertyName("type")] public string Type { get; set; } = "json_object";
+}
+
+// Non-streaming completion response shape (used by the Profile Compiler).
+internal sealed class OpenAIChatResponse
+{
+    [JsonPropertyName("choices")] public List<OpenAIResponseChoice> Choices { get; set; } = [];
+}
+
+internal sealed class OpenAIResponseChoice
+{
+    [JsonPropertyName("message")] public OpenAIChatMessage? Message { get; set; }
 }
 
 internal sealed class OpenAIStreamChunk
