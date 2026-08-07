@@ -356,8 +356,12 @@ in-memory store, and the OpenAI compiler contract tests (JSON → structured map
 carrying `response_format`, the configured model and `stream:false`, a revision that includes the
 prior draft and instruction, and no-key and non-success errors). A **gated live smoke test** compiles
 a persona from prose when
-`AIMON_OPENAI_API_KEY` is set. The authoring **UI** is deferred to Phase 7 (Desktop UX integration),
-which wires the profile manager onto this use case.
+`AIMON_OPENAI_API_KEY` is set. A **basic authoring UI** is included: the Desktop window is now a
+tabbed shell (`ShellViewModel`) with the streaming **Chat** tab and a **Profile Compiler** tab
+(`ProfileCompilerViewModel` + `ProfileCompilerView`) that drives the describe → compile → review →
+revise → confirm loop and saves through `IProfileStore`, sharing the API key with chat via the secret
+store. The fuller profile **manager** (edit / import / export / switch active profile) remains Phase 7
+(Desktop UX integration).
 
 ### Phase 6 — Graphics Compiler + Graphics Engine (state-driven frames)
 **Goal:** the avatar reacts to the AI's semantic state — the core differentiator.
