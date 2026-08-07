@@ -1,9 +1,10 @@
 namespace Aimon.Application.Abstractions;
 
 /// <summary>
-/// Placeholder Application port used to prove the Clean Architecture wiring end-to-end in
-/// Phase 0 (Domain &lt;- Application &lt;- Infrastructure &lt;- Desktop). It is replaced by the real
-/// ports (IRouter, IInterpreter, IAiProvider, …) in Phase 1.
+/// Placeholder Application port that proves the Clean Architecture wiring end-to-end
+/// (Domain &lt;- Application &lt;- Infrastructure &lt;- Desktop). The real pipeline ports now live
+/// alongside it in <c>Abstractions</c>; this shim stays only to keep the window showing something
+/// until the chat use case (<see cref="IChatService"/>) is wired into the UI in Phase 3.
 /// </summary>
 public interface IGreetingService
 {
