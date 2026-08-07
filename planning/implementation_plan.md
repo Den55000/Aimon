@@ -214,6 +214,24 @@ window; verify with `dotnet run --project src/Aimon.Desktop`.)
 **Acceptance / test:** everything compiles; unit tests cover value-object invariants and any
 domain rules (e.g., hard-settings validation).
 
+**Status (2026-08-07): ✅ Done.** Domain vocabulary added across five areas —
+`Models` (`ModelRef`, `GenerationParameters`), `Profiles` (`ProfileId`, `Profile`,
+`StructuredProfile`, `Personality`, `InteractionRules`, `Verbosity`, `ModelPreferences`,
+`TaskStyle`), `Safety` (`HardSettings` with normalization + blocked-lookup rules), `Conversations`
+(`Message`, `MessageRole`, `Exchange`, `ConversationState`), `Graphics` (`GraphicsConfiguration`,
+`FrameSet`, `AnimationLibrary`), and `Pipeline` (`ExecutionPlan`, `ProviderRequest`, and the closed
+`ProviderStreamItem` union: `TextDelta` / `StateChange` / `ProviderEvent`). All Application ports
+(§3.2) are declared in `Aimon.Application/Abstractions` — `IProfileCompiler`, `IRouter`,
+`IInterpreter`, `IAiProvider`, `IConversationStateReducer`, `IGraphicsEngine`, `IGraphicsCompiler`,
+`IProfileStore`, `ISecretStore`, `ILicenseService`, `IQuotaService` — plus the `IChatService`
+orchestration use-case signature and its supporting DTOs (`RoutingContext`, `RoutingResult`,
+`SendMessageRequest`, `ProfileSummary`, licensing types). No implementations yet, per the phase
+goal. Verified: `dotnet build -c Release` → 0 warnings / 0 errors; `dotnet test` → 28/28 passing
+(value-object invariants for `ProfileId`, `GenerationParameters`, `Message`; the `HardSettings`
+normalization/lookup rule; the `ProviderStreamItem` union; `AnimationLibrary` lookup; and an
+Application-layer dependency-rule test). The Phase 0 `IGreetingService` shim remains only to keep
+the window rendering until the chat use case is wired into the UI (Phase 3).
+
 ### Phase 2 — Configuration, storage & portability
 **Goal:** profiles are real, on-disk, portable artifacts.
 
