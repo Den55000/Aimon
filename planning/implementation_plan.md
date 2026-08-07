@@ -277,6 +277,26 @@ OpenAI adapter against recorded SSE; gated live smoke test. Demo: type a message
 stream and the state indicator move Idle→Working→Idle; a hard-settings-blocked request is refused
 locally and shows `Error`.
 
+**Status (2026-08-07): ✅ Done.** The walking skeleton streams end to end. **Application**: `Router`
+selects the model (task-style override → profile preferences), **enforces hard settings locally**
+(blocked model, or a blocked topic matched in the user message) and otherwise assembles system +
+user messages into an `ExecutionPlan`; `Interpreter` maps that to a `ProviderRequest`; `ChatService`
+orchestrates the turn — a block short-circuits to `AgentState.Error` + a `blocked` event without
+contacting the provider, otherwise the provider stream is passed straight through. **Infrastructure**:
+`OpenAIProvider` (`IAiProvider`) calls the OpenAI streaming Chat Completions API as a typed
+`HttpClient`, pulls the key from `ISecretStore`, derives lifecycle `AgentState`
+(Working→Idle, or Error) and translates SSE into `TextDelta`/`ProviderEvent`; sampling params are
+sent only when they deviate from defaults (so reasoning models accepting only the default work).
+**Desktop**: a minimal chat view (API-key entry that saves to the secret store, model box, streamed
+transcript, live state label) consuming `IChatService`. The Phase 0 `IGreetingService` shim was
+removed now that a real use case is wired into the UI. Verified: `dotnet build -c Release` → 0
+warnings / 0 errors; `dotnet test` → 55/55 passing — Router (model selection, model/topic blocks,
+no-model), Interpreter mapping, ChatService (pass-through + block-without-calling-provider), and the
+OpenAI adapter **contract test against recorded SSE** (assembles "Hello world", finish, Working→Idle)
+plus no-key/non-success error paths and the request-shape check. A **gated live smoke test**
+(`AIMON_OPENAI_API_KEY`, optional `AIMON_OPENAI_MODEL`) is a no-op without a key. Try it:
+`dotnet run --project src/Aimon.Desktop` → save your key, set the model, send a message.
+
 ### Phase 4 — Conversation State Reducer
 **Goal:** multi-turn context stays compact and feeds the Router.
 

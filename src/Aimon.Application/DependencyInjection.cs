@@ -1,3 +1,5 @@
+using Aimon.Application.Abstractions;
+using Aimon.Application.Pipeline;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Aimon.Application;
@@ -6,12 +8,14 @@ namespace Aimon.Application;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Registers Application-layer use cases into the DI container. Nothing concrete is
-    /// registered yet; the Router, Interpreter, Conversation State Reducer, and Profile
-    /// Compiler orchestration are added in later phases.
+    /// Registers the Application-layer use cases: the Router, Interpreter, and the ChatService that
+    /// orchestrates a turn. The provider (<c>IAiProvider</c>) is supplied by Infrastructure.
     /// </summary>
     public static IServiceCollection AddAimonApplication(this IServiceCollection services)
     {
+        services.AddTransient<IRouter, Router>();
+        services.AddTransient<IInterpreter, Interpreter>();
+        services.AddTransient<IChatService, ChatService>();
         return services;
     }
 }
