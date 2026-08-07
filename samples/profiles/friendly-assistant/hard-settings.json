@@ -1,0 +1,11 @@
+{
+  "blockedTopics": [
+    "politics"
+  ],
+  "blockedModels": [
+    "gpt-3.5"
+  ],
+  "blockedActions": [
+    "delete-files"
+  ]
+}

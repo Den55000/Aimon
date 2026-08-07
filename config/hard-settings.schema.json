@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aimon.app/schemas/hard-settings.schema.json",
+  "title": "Aimon Hard Settings",
+  "description": "The optional hard-settings.json document holding local safety blocks (implementation_plan.md, §3.5). Present only when a profile defines blocks. Entries are matched case-insensitively.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "blockedTopics": { "type": "array", "items": { "type": "string" } },
+    "blockedModels": { "type": "array", "items": { "type": "string" } },
+    "blockedActions": { "type": "array", "items": { "type": "string" } }
+  }
+}

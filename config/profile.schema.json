@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aimon.app/schemas/profile.schema.json",
+  "title": "Aimon Profile",
+  "description": "The profile.json document of a portable Aimon profile bundle (implementation_plan.md, §3.5). API keys are never stored here; they live in the OS secret store.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "name", "structured", "graphics"],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "On-disk schema version. Currently 1."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{32}$",
+      "description": "Profile identifier: a GUID in 32-digit 'N' format."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "naturalLanguageSource": {
+      "type": "string",
+      "description": "The plain-language description the user authored or dictated to the compiler."
+    },
+    "structured": { "$ref": "#/$defs/structuredProfile" },
+    "graphics": { "$ref": "#/$defs/graphics" }
+  },
+  "$defs": {
+    "structuredProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["personality", "interactionRules", "modelPreferences", "taskStyles"],
+      "properties": {
+        "personality": { "$ref": "#/$defs/personality" },
+        "interactionRules": { "$ref": "#/$defs/interactionRules" },
+        "modelPreferences": { "$ref": "#/$defs/modelPreferences" },
+        "taskStyles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/taskStyle" }
+        }
+      }
+    },
+    "personality": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "persona": { "type": "string" },
+        "tone": { "type": "string" },
+        "traits": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "interactionRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dos": { "type": "array", "items": { "type": "string" } },
+        "donts": { "type": "array", "items": { "type": "string" } },
+        "verbosity": { "type": "string", "enum": ["Terse", "Normal", "Detailed"] },
+        "formattingPreference": { "type": ["string", "null"] }
+      }
+    },
+    "modelRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "model"],
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 }
+      }
+    },
+    "generationParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
+        "topP": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maxOutputTokens": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "modelPreferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "preferred": { "type": "array", "items": { "$ref": "#/$defs/modelRef" } },
+        "defaultParameters": { "$ref": "#/$defs/generationParameters" }
+      }
+    },
+    "taskStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskName"],
+      "properties": {
+        "taskName": { "type": "string", "minLength": 1 },
+        "systemPromptAddition": { "type": ["string", "null"] },
+        "modelOverride": {
+          "oneOf": [{ "$ref": "#/$defs/modelRef" }, { "type": "null" }]
+        },
+        "parametersOverride": {
+          "oneOf": [{ "$ref": "#/$defs/generationParameters" }, { "type": "null" }]
+        }
+      }
+    },
+    "graphics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "animationLibraryId": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

@@ -245,6 +245,23 @@ the window rendering until the chat use case is wired into the UI (Phase 3).
 store reproduces it; a key stored via `ISecretStore` is retrievable and not present in any profile
 file. Demo: create, export, re-import a profile.
 
+**Status (2026-08-07): ✅ Done.** The portable format from §3.5 is implemented in
+`Aimon.Infrastructure`: a versioned, source-generated `System.Text.Json` layer (camelCase, string
+enums, indented, nulls omitted) using on-disk **DTOs decoupled from the Domain** so the schema can
+evolve independently; `ProfileMapper` reconstructs Domain value objects (and re-validates) on load.
+`FileProfileStore` (`IProfileStore`) keeps one folder per profile (`profile.json` +
+optional `hard-settings.json`) under the app-data folder and exports/imports a single zip bundle.
+`DpapiSecretStore` (`ISecretStore`) stores API keys encrypted with Windows DPAPI
+(`CurrentUser` scope + app entropy), keyed by provider, in a JSON map that never contains
+plaintext; the DPAPI calls are guarded with `OperatingSystem.IsWindows()` so the cross-platform seam
+stays clean. JSON Schemas live in `config/` (`profile.schema.json`, `hard-settings.schema.json`) and
+a validated sample bundle in `samples/profiles/friendly-assistant/`. DI defaults both stores to the
+current user's app-data folder; `InternalsVisibleTo` lets the tests drive the internal adapters with
+temp paths. Verified: `dotnet build -c Release` → 0 warnings / 0 errors; `dotnet test` → 43/43
+passing, covering lossless save→load round-trip, list/delete, export→import into a clean store,
+DPAPI set/get/overwrite/contains/delete, "plaintext never appears in profile or secret files", and a
+guard test that the bundled sample still loads through the real serializer.
+
 ### Phase 3 — Request pipeline walking skeleton (OpenAI + Interpreter + Router)
 **Goal:** real streaming chat, end to end, with hard-settings enforcement and live `AgentState`.
 
