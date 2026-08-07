@@ -62,5 +62,32 @@ public class ChatServiceTests
         Assert.Equal(0, provider.CallCount);
         Assert.Contains(items, item => item is ProviderStreamItem.StateChange { State: AgentState.Error });
         Assert.Contains(items, item => item is ProviderStreamItem.ProviderEvent { Kind: "blocked" });
+
+        // A blocked turn leaves the running state untouched — no reduced-state event is emitted.
+        Assert.DoesNotContain(items, item => item is ProviderStreamItem.ProviderEvent { Kind: "conversation" });
+    }
+
+    [Fact]
+    public async Task Emits_The_Reduced_Conversation_State_After_A_Completed_Turn()
+    {
+        var (chat, _) = Build(
+            new ProviderStreamItem.StateChange(AgentState.Working),
+            new ProviderStreamItem.TextDelta("Nice to meet you."),
+            new ProviderStreamItem.StateChange(AgentState.Idle));
+
+        var request = new SendMessageRequest
+        {
+            Profile = TestProfiles.WithModel("gpt-4o"),
+            ConversationState = ConversationState.Empty,
+            UserMessage = Message.User("My name is Denys."),
+        };
+
+        var items = await AsyncStream.ToListAsync(chat.SendAsync(request, CancellationToken.None));
+
+        var conversationEvent = Assert.Single(
+            items.OfType<ProviderStreamItem.ProviderEvent>(), e => e.Kind == "conversation");
+        var reduced = Assert.IsType<ConversationState>(conversationEvent.Payload);
+        Assert.Equal(1, reduced.TurnCount);
+        Assert.Contains(reduced.SalientFacts, fact => fact.Contains("name is Denys", StringComparison.OrdinalIgnoreCase));
     }
 }
