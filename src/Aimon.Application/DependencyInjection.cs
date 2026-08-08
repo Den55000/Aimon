@@ -1,5 +1,6 @@
 using Aimon.Application.Abstractions;
 using Aimon.Application.Authoring;
+using Aimon.Application.Graphics;
 using Aimon.Application.Pipeline;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,6 +21,7 @@ public static class DependencyInjection
         services.AddTransient<IConversationStateReducer, ConversationStateReducer>();
         services.AddTransient<IChatService, ChatService>();
         services.AddTransient<IProfileDraftSessionFactory, ProfileDraftSessionFactory>();
+        services.AddTransient<IGraphicsEngine, FrameSequencer>();
         return services;
     }
 }

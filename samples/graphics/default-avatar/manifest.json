@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "name": "default-avatar",
+  "version": "1.0.0",
+  "frameSets": [
+    { "state": "Idle", "frames": ["idle/0.svg", "idle/1.svg"], "framesPerSecond": 4, "loop": true },
+    { "state": "Listening", "frames": ["listening/0.svg", "listening/1.svg"], "framesPerSecond": 6, "loop": true },
+    { "state": "Working", "frames": ["working/0.svg", "working/1.svg", "working/2.svg"], "framesPerSecond": 12, "loop": true },
+    { "state": "Error", "frames": ["error/0.svg", "error/1.svg"], "framesPerSecond": 3, "loop": false }
+  ]
+}

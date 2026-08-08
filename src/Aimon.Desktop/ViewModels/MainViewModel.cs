@@ -26,6 +26,9 @@ public partial class MainViewModel : ViewModelBase
     // The compact running state the reducer folds each turn into; fed back into the next turn's Router.
     private ConversationState _conversationState = ConversationState.Empty;
 
+    /// <summary>The avatar shown beside the chat; it reacts to this turn's <see cref="AgentState"/> changes.</summary>
+    public AvatarViewModel Avatar { get; }
+
     [ObservableProperty]
     public partial string ApiKey { get; set; }
 
@@ -48,6 +51,7 @@ public partial class MainViewModel : ViewModelBase
     // Design-time constructor for the XAML previewer.
     public MainViewModel()
     {
+        Avatar = new AvatarViewModel();
         ApiKey = "";
         Model = "gpt-5.4-mini";
         Input = "";
@@ -56,10 +60,11 @@ public partial class MainViewModel : ViewModelBase
     }
 
     // Runtime constructor resolved through the DI container in App.axaml.cs.
-    public MainViewModel(IChatService chatService, ISecretStore secretStore)
+    public MainViewModel(IChatService chatService, ISecretStore secretStore, AvatarViewModel avatar)
     {
         _chatService = chatService;
         _secretStore = secretStore;
+        Avatar = avatar;
         ApiKey = "";
         Model = "gpt-5.4-mini";
         Input = "";
@@ -91,6 +96,7 @@ public partial class MainViewModel : ViewModelBase
 
         IsBusy = true;
         _sendCts = new CancellationTokenSource();
+        Avatar.OnAgentState(AgentState.Listening);
 
         try
         {
@@ -110,6 +116,7 @@ public partial class MainViewModel : ViewModelBase
                         break;
                     case ProviderStreamItem.StateChange stateChange:
                         StateLabel = stateChange.State.ToString();
+                        Avatar.OnAgentState(stateChange.State);
                         break;
                     case ProviderStreamItem.ProviderEvent { Kind: "conversation", Payload: ConversationState next }:
                         _conversationState = next;
@@ -130,6 +137,7 @@ public partial class MainViewModel : ViewModelBase
         catch (HttpRequestException ex)
         {
             StateLabel = AgentState.Error.ToString();
+            Avatar.OnAgentState(AgentState.Error);
             AppendLine($"[error: {ex.Message}]");
         }
         finally

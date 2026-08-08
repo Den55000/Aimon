@@ -1,5 +1,6 @@
 using Aimon.Application.Abstractions;
 using Aimon.Infrastructure.Compilation;
+using Aimon.Infrastructure.Graphics;
 using Aimon.Infrastructure.OpenAI;
 using Aimon.Infrastructure.Persistence;
 using Aimon.Infrastructure.Secrets;
@@ -38,6 +39,8 @@ public static class DependencyInjection
             client.BaseAddress = new Uri(options.BaseAddress);
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
         });
+
+        services.AddSingleton<IGraphicsCompiler, FileGraphicsCompiler>();
 
         return services;
     }
