@@ -18,6 +18,9 @@ public partial class ProfileCompilerViewModel : ViewModelBase
     private readonly IProfileDraftSessionFactory? _sessionFactory;
     private ProfileDraftSession? _session;
 
+    /// <summary>Raised after a profile is confirmed and saved, so the Profiles list can refresh.</summary>
+    public event Action? ProfileSaved;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CompileCommand))]
     public partial string Name { get; set; }
@@ -134,6 +137,7 @@ public partial class ProfileCompilerViewModel : ViewModelBase
             HasDraft = false;
             IsDraftValid = false;
             StatusLabel = $"Saved profile “{profile.Name}” ({profile.Id}). Compile again to author another.";
+            ProfileSaved?.Invoke();
         }
         catch (Exception ex)
         {

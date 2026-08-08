@@ -45,6 +45,7 @@ public partial class App : Avalonia.Application
 
         services.AddTransient<AvatarViewModel>();
         services.AddTransient<MainViewModel>();
+        services.AddTransient<ProfileManagerViewModel>();
         services.AddTransient<ProfileCompilerViewModel>();
         services.AddTransient<ShellViewModel>();
     }
