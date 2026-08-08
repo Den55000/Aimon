@@ -411,6 +411,29 @@ the avatar move Idle → Listening → Working → Idle (and to Error on a block
 **Acceptance / test:** headless VM tests for the main flows; navigation/state tests; usability
 demo covering the full loop from profile selection to a themed, animated conversation.
 
+**Status (2026-08-08): ✅ Done (core loop).** The parts are now one app. The Desktop window is a
+tabbed shell (`ShellViewModel`) — **Chat**, **Profiles**, **Profile Compiler** — with an active-profile
+**banner themed by a per-profile accent** (a deterministic colour derived from the profile name).
+`ProfileManagerViewModel` lists saved profiles (`IProfileStore.ListAsync`), and **switching the active
+profile** (`Activate`) loads the full profile and raises an event the shell forwards into the chat and
+theming; it also supports refresh and delete. The **chat now uses the active profile** — its
+personality, interaction rules, and **hard settings** drive each turn (the Model box stays authoritative
+for the model), and switching profiles starts a fresh conversation; with no profile active it falls back
+to a built-in default. Compiling and confirming a profile in the Compiler tab **auto-refreshes** the
+Profiles list. The avatar (Phase 6) is wired to the live `AgentState`, giving the full loop: pick a
+profile → its accent themes the shell → chat with its persona → the avatar animates through
+Idle/Listening/Working/Error. A new **`Aimon.Desktop.Tests`** project covers the main VM flows (list
+loads sorted, activate loads the full profile + raises the event, delete removes + refreshes, commands
+gated without a selection). Verified: `dotnet build -c Release` → 0 warnings / 0 errors; `dotnet test`
+→ 90/90 passing.
+
+**Deferred to Phase 9 (hardening/polish):** file-dialog **import/export** UI (the store-level
+export/import already exists from Phase 2 — only the picker remains); a dedicated **settings editor**
+for hard settings / model preferences (currently authored via the compiler + profile files); loading a
+**profile-specific animation library** (the avatar uses the built-in library until a library registry
+maps `AnimationLibraryId` → a packaged folder); and full **Avalonia.Headless render** tests (the VM
+flows are covered by plain VM tests).
+
 ### Phase 8 — Stub billing / licensing & quota (per D2)
 **Goal:** the pricing tiers have real client-side seams against a mock backend.
 

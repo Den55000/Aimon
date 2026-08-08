@@ -7,6 +7,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Aimon.Application.Tests/Aimon.Application.Tests.csproj" />
+    <Project Path="tests/Aimon.Desktop.Tests/Aimon.Desktop.Tests.csproj" />
     <Project Path="tests/Aimon.Domain.Tests/Aimon.Domain.Tests.csproj" />
     <Project Path="tests/Aimon.Infrastructure.Tests/Aimon.Infrastructure.Tests.csproj" />
   </Folder>

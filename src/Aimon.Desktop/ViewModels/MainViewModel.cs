@@ -26,6 +26,9 @@ public partial class MainViewModel : ViewModelBase
     // The compact running state the reducer folds each turn into; fed back into the next turn's Router.
     private ConversationState _conversationState = ConversationState.Empty;
 
+    // The profile activated in the Profiles tab; its personality + hard settings drive each turn.
+    private Profile? _activeProfile;
+
     /// <summary>The avatar shown beside the chat; it reacts to this turn's <see cref="AgentState"/> changes.</summary>
     public AvatarViewModel Avatar { get; }
 
@@ -102,7 +105,7 @@ public partial class MainViewModel : ViewModelBase
         {
             var request = new SendMessageRequest
             {
-                Profile = BuildProfile(Model.Trim()),
+                Profile = BuildTurnProfile(Model.Trim()),
                 ConversationState = _conversationState,
                 UserMessage = Message.User(userText),
             };
@@ -149,6 +152,19 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Adopts the profile activated in the Profiles tab and starts a fresh conversation with it.</summary>
+    public void SetActiveProfile(Profile profile)
+    {
+        _activeProfile = profile;
+        _conversationState = ConversationState.Empty;
+
+        var preferred = profile.Structured.ModelPreferences.Preferred;
+        if (preferred.Count > 0 && !string.IsNullOrWhiteSpace(preferred[0].Model))
+            Model = preferred[0].Model;
+
+        AppendLine($"[Active profile: {profile.Name}]");
+    }
+
     private bool CanSend() => !IsBusy;
 
     private void Append(string text) => Transcript += text;
@@ -161,14 +177,31 @@ public partial class MainViewModel : ViewModelBase
         Transcript += line;
     }
 
-    private static Profile BuildProfile(string model) => new()
+    // Use the active profile (personality, rules, hard settings) for the turn, but let the Model box
+    // pick the model; fall back to a built-in default when no profile is active.
+    private Profile BuildTurnProfile(string model)
+    {
+        var baseProfile = _activeProfile ?? DefaultProfile();
+
+        return baseProfile with
+        {
+            Structured = baseProfile.Structured with
+            {
+                ModelPreferences = baseProfile.Structured.ModelPreferences with
+                {
+                    Preferred = [new ModelRef("openai", model)],
+                },
+            },
+        };
+    }
+
+    private static Profile DefaultProfile() => new()
     {
         Id = ProfileId.New(),
         Name = "Default",
         Structured = new StructuredProfile
         {
             Personality = new Personality { Persona = "Aimon, a friendly and concise assistant" },
-            ModelPreferences = new ModelPreferences { Preferred = [new ModelRef("openai", model)] },
         },
     };
 }

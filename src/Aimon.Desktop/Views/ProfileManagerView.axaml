@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aimon.Desktop.ViewModels"
+             xmlns:app="using:Aimon.Application.Profiles"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="520"
+             x:Class="Aimon.Desktop.Views.ProfileManagerView"
+             x:DataType="vm:ProfileManagerViewModel">
+
+    <Design.DataContext>
+        <vm:ProfileManagerViewModel />
+    </Design.DataContext>
+
+    <Grid Margin="12" RowDefinitions="Auto,*,Auto">
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+            <TextBlock VerticalAlignment="Center" FontWeight="SemiBold"
+                       Text="{Binding ActiveProfileName, StringFormat='Active: {0}'}" />
+            <Button Content="Refresh" Command="{Binding RefreshCommand}" />
+        </StackPanel>
+
+        <Border Grid.Row="1" BorderBrush="#40808080" BorderThickness="1" CornerRadius="6">
+            <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
+                     Background="Transparent">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="app:ProfileSummary">
+                        <StackPanel Margin="2">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding UpdatedAt, StringFormat='updated {0:g}'}"
+                                       FontSize="11" Opacity="0.6" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*" Margin="0,8,0,0">
+            <Button Grid.Column="0" Content="Activate" Command="{Binding ActivateCommand}" />
+            <Button Grid.Column="1" Margin="8,0,0,0" Content="Delete" Command="{Binding DeleteCommand}" />
+            <TextBlock Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center"
+                       TextWrapping="Wrap" Text="{Binding StatusLabel}" />
+        </Grid>
+
+    </Grid>
+
+</UserControl>
