@@ -3,6 +3,7 @@ using Aimon.Application.Pipeline;
 using Aimon.Application.Tests.TestSupport;
 using Aimon.Domain.Conversations;
 using Aimon.Domain.Models;
+using Aimon.Domain.Pipeline;
 using Aimon.Domain.Profiles;
 using Aimon.Domain.Safety;
 using Microsoft.Extensions.DependencyInjection;
@@ -72,5 +73,35 @@ public class RouterTests
 
         var planned = Assert.IsType<RoutingResult.Planned>(CreateRouter().Route(Context(profile, "help me code", task: "coding")));
         Assert.Equal("gpt-4o-mini", planned.Plan.Model.Model);
+    }
+
+    [Fact]
+    public void Auto_Mode_Enables_The_Image_Tool()
+    {
+        var context = Context(TestProfiles.WithModel("gpt-4o"), "draw a fox") with { Mode = TurnMode.Auto };
+
+        var planned = Assert.IsType<RoutingResult.Planned>(CreateRouter().Route(context));
+        Assert.Equal(TurnMode.Auto, planned.Plan.Mode);
+        Assert.True(planned.Plan.ImageToolEnabled);
+    }
+
+    [Fact]
+    public void Chat_Mode_Does_Not_Offer_The_Image_Tool()
+    {
+        var context = Context(TestProfiles.WithModel("gpt-4o"), "hello") with { Mode = TurnMode.Chat };
+
+        var planned = Assert.IsType<RoutingResult.Planned>(CreateRouter().Route(context));
+        Assert.Equal(TurnMode.Chat, planned.Plan.Mode);
+        Assert.False(planned.Plan.ImageToolEnabled);
+    }
+
+    [Fact]
+    public void Image_Mode_Forces_Generation_Without_The_Tool()
+    {
+        var context = Context(TestProfiles.WithModel("gpt-4o"), "a blue car") with { Mode = TurnMode.Image };
+
+        var planned = Assert.IsType<RoutingResult.Planned>(CreateRouter().Route(context));
+        Assert.Equal(TurnMode.Image, planned.Plan.Mode);
+        Assert.False(planned.Plan.ImageToolEnabled);
     }
 }

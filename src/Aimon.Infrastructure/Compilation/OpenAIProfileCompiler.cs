@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Aimon.Application.Abstractions;
 using Aimon.Application.Authoring;
 using Aimon.Domain.Profiles;
@@ -67,10 +68,10 @@ internal sealed class OpenAIProfileCompiler : IProfileCompiler
 
     private HttpRequestMessage BuildRequest(ProfileCompilationRequest request, string apiKey)
     {
-        var messages = new List<OpenAIChatMessage>
+        var messages = new List<OpenAIRequestMessage>
         {
-            new() { Role = "system", Content = SystemPrompt },
-            new() { Role = "user", Content = BuildUserContent(request) },
+            new() { Role = "system", Content = JsonValue.Create(SystemPrompt) },
+            new() { Role = "user", Content = JsonValue.Create(BuildUserContent(request)) },
         };
 
         var body = new OpenAIChatRequest

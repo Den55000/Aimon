@@ -11,6 +11,12 @@ internal sealed class OpenAIProviderOptions
 
     public int TimeoutSeconds { get; init; } = 100;
 
+    /// <summary>The model used for image generation (the <c>images/generations</c> endpoint).</summary>
+    public string ImageModel { get; init; } = "gpt-image-1";
+
+    /// <summary>The size passed to image generation, e.g. <c>1024x1024</c>.</summary>
+    public string ImageSize { get; init; } = "1024x1024";
+
     public static OpenAIProviderOptions Default() => new()
     {
         BaseAddress = "https://api.openai.com/v1/",

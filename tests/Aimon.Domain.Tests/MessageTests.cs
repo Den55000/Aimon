@@ -33,7 +33,7 @@ public class MessageTests
     {
         var when = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
-        var message = new Message(MessageRole.User, "hi", when);
+        var message = new Message(MessageRole.User, "hi", timestamp: when);
 
         Assert.Equal(when, message.Timestamp);
     }

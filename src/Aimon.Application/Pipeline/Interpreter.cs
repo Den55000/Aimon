@@ -19,6 +19,8 @@ internal sealed class Interpreter : IInterpreter
             Messages = plan.Messages,
             Parameters = plan.Parameters,
             Stream = true,
+            Mode = plan.Mode,
+            ImageToolEnabled = plan.ImageToolEnabled,
         };
     }
 }

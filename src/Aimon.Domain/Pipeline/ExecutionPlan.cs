@@ -18,4 +18,10 @@ public sealed record ExecutionPlan
     public GenerationParameters Parameters { get; init; } = GenerationParameters.Default;
 
     public GraphicsConfiguration Graphics { get; init; } = GraphicsConfiguration.Default;
+
+    /// <summary>How this turn should be handled (auto / plain chat / forced image generation).</summary>
+    public TurnMode Mode { get; init; } = TurnMode.Auto;
+
+    /// <summary>When true, the chat request offers the image-generation tool (used in <see cref="TurnMode.Auto"/>).</summary>
+    public bool ImageToolEnabled { get; init; }
 }

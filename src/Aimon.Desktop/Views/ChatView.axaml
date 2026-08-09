@@ -18,29 +18,69 @@
         <views:AvatarView Grid.Column="0" DataContext="{Binding Avatar}" Margin="0,0,12,0" />
 
         <!-- Chat -->
-        <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+        <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto,Auto">
 
-            <!-- Settings: API key, model, and the live agent state -->
+            <!-- Settings: API key, model, mode, and the live agent state -->
             <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-                <TextBox Width="230" PlaceholderText="OpenAI API key" PasswordChar="•" Text="{Binding ApiKey}" />
+                <TextBox Width="200" PlaceholderText="OpenAI API key" PasswordChar="•" Text="{Binding ApiKey}" />
                 <Button Content="Save key" Command="{Binding SaveKeyCommand}" />
-                <TextBox Width="130" PlaceholderText="Model" Text="{Binding Model}" />
+                <TextBox Width="120" PlaceholderText="Model" Text="{Binding Model}" />
+                <ComboBox Width="90" ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}"
+                          ToolTip.Tip="Auto: the model decides. Chat: text only. Image: force image generation." />
                 <TextBlock VerticalAlignment="Center" FontWeight="SemiBold"
                            Text="{Binding StateLabel, StringFormat='State: {0}'}" />
             </StackPanel>
 
-            <!-- Streamed transcript -->
+            <!-- Transcript: text and image bubbles -->
             <Border Grid.Row="1" BorderBrush="#40808080" BorderThickness="1" CornerRadius="6">
-                <TextBox Text="{Binding Transcript}"
-                         IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                         Background="Transparent" BorderThickness="0"
-                         ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Messages}" Margin="8">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ChatMessageViewModel">
+                                <Border Margin="0,4" Padding="8" CornerRadius="6" Background="#18808080">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="{Binding Sender}" FontSize="11" FontWeight="SemiBold" Opacity="0.6" />
+                                        <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap"
+                                                             IsVisible="{Binding HasText}" />
+                                        <Image Source="{Binding Image}" MaxWidth="360" MaxHeight="360"
+                                               HorizontalAlignment="Left" IsVisible="{Binding IsImage}" />
+                                        <Button Content="Save image" HorizontalAlignment="Left"
+                                                IsVisible="{Binding CanSave}"
+                                                Command="{Binding SaveImageCommand}" CommandParameter="{Binding ImageData}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </Border>
 
+            <!-- Pending image attachments (thumbnails) -->
+            <ItemsControl Grid.Row="2" ItemsSource="{Binding Attachments}" Margin="0,8,0,0">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:AttachmentViewModel">
+                        <Border Margin="0,0,6,0" BorderBrush="#40808080" BorderThickness="1" CornerRadius="4" Padding="2">
+                            <Grid>
+                                <Image Source="{Binding Thumbnail}" Width="56" Height="56" Stretch="UniformToFill" />
+                                <Button Content="✕" Padding="4,0" FontSize="10"
+                                        VerticalAlignment="Top" HorizontalAlignment="Right"
+                                        Command="{Binding RemoveCommand}" CommandParameter="{Binding}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
             <!-- Input -->
-            <Grid Grid.Row="2" Margin="0,8,0,0" ColumnDefinitions="*,Auto">
-                <TextBox Grid.Column="0" PlaceholderText="Type a message…" Text="{Binding Input}" />
-                <Button Grid.Column="1" Margin="8,0,0,0" Content="Send"
+            <Grid Grid.Row="3" Margin="0,8,0,0" ColumnDefinitions="Auto,*,Auto">
+                <Button Grid.Column="0" Margin="0,0,8,0" Content="Attach" Command="{Binding AttachImagesCommand}" />
+                <TextBox Grid.Column="1" PlaceholderText="Type a message…" Text="{Binding Input}" />
+                <Button Grid.Column="2" Margin="8,0,0,0" Content="Send"
                         Command="{Binding SendCommand}" IsDefault="True" />
             </Grid>
 
