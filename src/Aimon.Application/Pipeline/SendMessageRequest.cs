@@ -1,4 +1,5 @@
 using Aimon.Domain.Conversations;
+using Aimon.Domain.Pipeline;
 using Aimon.Domain.Profiles;
 
 namespace Aimon.Application.Pipeline;
@@ -13,4 +14,7 @@ public sealed record SendMessageRequest
     public required Message UserMessage { get; init; }
 
     public string? TaskName { get; init; }
+
+    /// <summary>How the user wants this turn handled (auto / chat / image). Defaults to auto.</summary>
+    public TurnMode Mode { get; init; } = TurnMode.Auto;
 }

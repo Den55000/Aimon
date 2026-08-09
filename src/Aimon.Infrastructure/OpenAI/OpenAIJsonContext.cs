@@ -7,4 +7,6 @@ namespace Aimon.Infrastructure.OpenAI;
 [JsonSerializable(typeof(OpenAIChatRequest))]
 [JsonSerializable(typeof(OpenAIStreamChunk))]
 [JsonSerializable(typeof(OpenAIChatResponse))]
+[JsonSerializable(typeof(OpenAIImageRequest))]
+[JsonSerializable(typeof(OpenAIImageResponse))]
 internal sealed partial class OpenAIJsonContext : JsonSerializerContext;

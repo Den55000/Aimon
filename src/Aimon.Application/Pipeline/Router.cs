@@ -47,6 +47,10 @@ internal sealed class Router : IRouter
             Messages = messages,
             Parameters = parameters,
             Graphics = profile.Graphics,
+            Mode = context.Mode,
+            // In auto mode the chat model decides whether to generate an image by calling the tool;
+            // chat/image modes are explicit and don't need the tool offered.
+            ImageToolEnabled = context.Mode == TurnMode.Auto,
         };
 
         return new RoutingResult.Planned(plan);

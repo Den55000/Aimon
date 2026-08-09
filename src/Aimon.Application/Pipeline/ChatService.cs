@@ -42,6 +42,7 @@ internal sealed class ChatService : IChatService
             ConversationState = request.ConversationState,
             UserMessage = request.UserMessage,
             TaskName = request.TaskName,
+            Mode = request.Mode,
         });
 
         if (routing is RoutingResult.Blocked blocked)
@@ -57,6 +58,7 @@ internal sealed class ChatService : IChatService
 
         var assistantText = new StringBuilder();
         var finalState = AgentState.Idle;
+        var producedImage = false;
 
         await foreach (var item in _provider.StreamAsync(providerRequest, cancellationToken).ConfigureAwait(false))
         {
@@ -64,6 +66,9 @@ internal sealed class ChatService : IChatService
             {
                 case ProviderStreamItem.TextDelta delta:
                     assistantText.Append(delta.Text);
+                    break;
+                case ProviderStreamItem.ImageArtifact:
+                    producedImage = true;
                     break;
                 case ProviderStreamItem.StateChange stateChange:
                     finalState = stateChange.State;
@@ -74,10 +79,15 @@ internal sealed class ChatService : IChatService
         }
 
         // Close the loop: fold this completed exchange into a compact state for the next turn's Router.
+        // Note an image turn textually so the running summary stays coherent when there's no caption.
+        var assistantSummary = assistantText.ToString();
+        if (assistantSummary.Length == 0 && producedImage)
+            assistantSummary = "[Generated an image.]";
+
         var exchange = new Exchange
         {
             UserMessage = request.UserMessage,
-            AssistantMessage = Message.Assistant(assistantText.ToString()),
+            AssistantMessage = Message.Assistant(assistantSummary),
             FinalState = finalState,
         };
 

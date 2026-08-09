@@ -1,4 +1,5 @@
 using Aimon.Application;
+using Aimon.Desktop.Services;
 using Aimon.Desktop.ViewModels;
 using Aimon.Desktop.Views;
 using Aimon.Infrastructure;
@@ -42,6 +43,8 @@ public partial class App : Avalonia.Application
 
         services.AddAimonApplication();
         services.AddAimonInfrastructure();
+
+        services.AddSingleton<IImagePicker, StorageProviderImagePicker>();
 
         services.AddTransient<AvatarViewModel>();
         services.AddTransient<MainViewModel>();

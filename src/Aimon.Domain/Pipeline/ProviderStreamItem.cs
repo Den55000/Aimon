@@ -16,6 +16,9 @@ public abstract record ProviderStreamItem
     /// <summary>A transition of the AI's semantic state.</summary>
     public sealed record StateChange(AgentState State) : ProviderStreamItem;
 
+    /// <summary>A generated image: raw bytes, their media type, and an optional caption/prompt.</summary>
+    public sealed record ImageArtifact(byte[] Data, string MediaType, string? Caption = null) : ProviderStreamItem;
+
     /// <summary>A provider-specific event: tool call, finish reason, usage, error, etc.</summary>
     public sealed record ProviderEvent(string Kind, object? Payload = null) : ProviderStreamItem;
 }
