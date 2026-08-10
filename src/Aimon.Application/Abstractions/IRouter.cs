@@ -10,4 +10,10 @@ namespace Aimon.Application.Abstractions;
 public interface IRouter
 {
     RoutingResult Route(RoutingContext context);
+
+    /// <summary>
+    /// Plans a CLI-agent turn: enforces hard settings and builds the persona system prompt + the
+    /// <c>AgentTurnRequest</c> handed to an <see cref="IAgentBackend"/> (implementation_plan.md, Phase 9).
+    /// </summary>
+    AgentRoutingResult RouteAgent(AgentRoutingContext context);
 }

@@ -1,4 +1,5 @@
 using Aimon.Application.Abstractions;
+using Aimon.Application.Agents;
 using Aimon.Application.Authoring;
 using Aimon.Application.Graphics;
 using Aimon.Application.Pipeline;
@@ -19,6 +20,8 @@ public static class DependencyInjection
         services.AddTransient<IRouter, Router>();
         services.AddTransient<IInterpreter, Interpreter>();
         services.AddTransient<IConversationStateReducer, ConversationStateReducer>();
+        // Transient so the registry never captures the transient model provider / agent backends.
+        services.AddTransient<IChatBackendRegistry, ChatBackendRegistry>();
         services.AddTransient<IChatService, ChatService>();
         services.AddTransient<IProfileDraftSessionFactory, ProfileDraftSessionFactory>();
         services.AddTransient<IGraphicsEngine, FrameSequencer>();

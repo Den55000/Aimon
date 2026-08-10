@@ -1,4 +1,6 @@
 using Aimon.Application.Abstractions;
+using Aimon.Infrastructure.Agents;
+using Aimon.Infrastructure.Agents.ClaudeCode;
 using Aimon.Infrastructure.Compilation;
 using Aimon.Infrastructure.Graphics;
 using Aimon.Infrastructure.OpenAI;
@@ -41,6 +43,12 @@ public static class DependencyInjection
         });
 
         services.AddSingleton<IGraphicsCompiler, FileGraphicsCompiler>();
+
+        // Agentic CLI backends (Phase 9). The process runner is the seam adapters share; Claude Code is
+        // the first backend — Codex/Cursor/Copilot register another IAgentBackend the same way.
+        services.AddSingleton<IProcessRunner, ProcessRunner>();
+        services.AddSingleton(ClaudeCodeOptions.Default());
+        services.AddSingleton<IAgentBackend, ClaudeCodeAgentBackend>();
 
         return services;
     }

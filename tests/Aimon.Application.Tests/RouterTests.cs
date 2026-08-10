@@ -1,6 +1,7 @@
 using Aimon.Application.Abstractions;
 using Aimon.Application.Pipeline;
 using Aimon.Application.Tests.TestSupport;
+using Aimon.Domain.Agents;
 using Aimon.Domain.Conversations;
 using Aimon.Domain.Models;
 using Aimon.Domain.Pipeline;
@@ -103,5 +104,46 @@ public class RouterTests
         var planned = Assert.IsType<RoutingResult.Planned>(CreateRouter().Route(context));
         Assert.Equal(TurnMode.Image, planned.Plan.Mode);
         Assert.False(planned.Plan.ImageToolEnabled);
+    }
+
+    // --- Agent path -------------------------------------------------------------------------
+
+    private static AgentRoutingContext AgentContext(Profile profile, string userText, AgentSessionId? session = null) => new()
+    {
+        Profile = profile,
+        UserMessage = Message.User(userText),
+        Workspace = new WorkspaceContext("/repo"),
+        SessionId = session,
+    };
+
+    [Fact]
+    public void RouteAgent_Plans_With_The_Persona_System_Prompt_And_Workspace()
+    {
+        var result = CreateRouter().RouteAgent(AgentContext(TestProfiles.WithModel("gpt-4o"), "refactor this module"));
+
+        var planned = Assert.IsType<AgentRoutingResult.Planned>(result);
+        Assert.Equal("refactor this module", planned.Request.Prompt);
+        Assert.Equal("/repo", planned.Request.Workspace.RootPath);
+        Assert.Contains("test assistant", planned.Request.SystemPrompt);
+    }
+
+    [Fact]
+    public void RouteAgent_Enforces_Blocked_Topics()
+    {
+        var profile = TestProfiles.WithModel("gpt-4o", new HardSettings(blockedTopics: ["politics"]));
+
+        var blocked = Assert.IsType<AgentRoutingResult.Blocked>(
+            CreateRouter().RouteAgent(AgentContext(profile, "let's talk POLITICS")));
+        Assert.Contains("politics", blocked.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void RouteAgent_Carries_The_Session_To_Resume()
+    {
+        var session = AgentSessionId.From("sess-123");
+
+        var planned = Assert.IsType<AgentRoutingResult.Planned>(
+            CreateRouter().RouteAgent(AgentContext(TestProfiles.WithModel(), "continue", session)));
+        Assert.Equal(session, planned.Request.SessionId);
     }
 }

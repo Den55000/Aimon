@@ -2,6 +2,7 @@ using Aimon.Application.Abstractions;
 using Aimon.Application.Pipeline;
 using Aimon.Application.Tests.TestSupport;
 using Aimon.Domain;
+using Aimon.Domain.Agents;
 using Aimon.Domain.Conversations;
 using Aimon.Domain.Pipeline;
 using Aimon.Domain.Safety;
@@ -20,6 +21,18 @@ public class ChatServiceTests
             .BuildServiceProvider();
 
         return (services.GetRequiredService<IChatService>(), provider);
+    }
+
+    private static (IChatService Chat, FakeAgentBackend Agent) BuildWithAgent(params ProviderStreamItem[] scripted)
+    {
+        var agent = new FakeAgentBackend("claude-code", scripted);
+        var services = new ServiceCollection()
+            .AddAimonApplication()
+            .AddSingleton<IAiProvider>(new FakeAiProvider())
+            .AddSingleton<IAgentBackend>(agent)
+            .BuildServiceProvider();
+
+        return (services.GetRequiredService<IChatService>(), agent);
     }
 
     [Fact]
@@ -89,5 +102,95 @@ public class ChatServiceTests
         var reduced = Assert.IsType<ConversationState>(conversationEvent.Payload);
         Assert.Equal(1, reduced.TurnCount);
         Assert.Contains(reduced.SalientFacts, fact => fact.Contains("name is Denys", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // --- Agent backend path -----------------------------------------------------------------
+
+    [Fact]
+    public async Task Routes_To_The_Selected_Agent_Backend_And_Skips_The_Reducer()
+    {
+        var (chat, agent) = BuildWithAgent(
+            new ProviderStreamItem.StateChange(AgentState.Working),
+            new ProviderStreamItem.TextDelta("Edited file."),
+            new ProviderStreamItem.ProviderEvent("session", "sess-9"),
+            new ProviderStreamItem.StateChange(AgentState.Idle));
+
+        var request = new SendMessageRequest
+        {
+            Profile = TestProfiles.WithModel("gpt-4o"),
+            ConversationState = ConversationState.Empty,
+            UserMessage = Message.User("fix the bug"),
+            Backend = BackendId.From("claude-code"),
+            Workspace = new WorkspaceContext("/repo"),
+        };
+
+        var items = await AsyncStream.ToListAsync(chat.SendAsync(request, CancellationToken.None));
+
+        Assert.Equal(1, agent.CallCount);
+        Assert.Equal("fix the bug", agent.LastRequest!.Prompt);
+        Assert.Contains(items, item => item is ProviderStreamItem.ProviderEvent { Kind: "session" });
+
+        // The agent's own session carries memory, so Aimon's reducer never runs on this path.
+        Assert.DoesNotContain(items, item => item is ProviderStreamItem.ProviderEvent { Kind: "conversation" });
+    }
+
+    [Fact]
+    public async Task Agent_Turn_Without_A_Workspace_Errors_Before_Launch()
+    {
+        var (chat, agent) = BuildWithAgent(new ProviderStreamItem.TextDelta("should not appear"));
+
+        var request = new SendMessageRequest
+        {
+            Profile = TestProfiles.WithModel("gpt-4o"),
+            ConversationState = ConversationState.Empty,
+            UserMessage = Message.User("do something"),
+            Backend = BackendId.From("claude-code"),
+        };
+
+        var items = await AsyncStream.ToListAsync(chat.SendAsync(request, CancellationToken.None));
+
+        Assert.Equal(0, agent.CallCount);
+        Assert.Contains(items, item => item is ProviderStreamItem.StateChange { State: AgentState.Error });
+        Assert.Contains(items, item => item is ProviderStreamItem.ProviderEvent { Kind: "error" });
+    }
+
+    [Fact]
+    public async Task An_Unknown_Backend_Errors()
+    {
+        var (chat, agent) = BuildWithAgent(new ProviderStreamItem.TextDelta("should not appear"));
+
+        var request = new SendMessageRequest
+        {
+            Profile = TestProfiles.WithModel("gpt-4o"),
+            ConversationState = ConversationState.Empty,
+            UserMessage = Message.User("hi"),
+            Backend = BackendId.From("does-not-exist"),
+            Workspace = new WorkspaceContext("/repo"),
+        };
+
+        var items = await AsyncStream.ToListAsync(chat.SendAsync(request, CancellationToken.None));
+
+        Assert.Equal(0, agent.CallCount);
+        Assert.Contains(items, item => item is ProviderStreamItem.ProviderEvent { Kind: "error" });
+    }
+
+    [Fact]
+    public async Task Agent_Turn_Blocked_By_Hard_Settings_Does_Not_Launch()
+    {
+        var (chat, agent) = BuildWithAgent(new ProviderStreamItem.TextDelta("should not appear"));
+
+        var request = new SendMessageRequest
+        {
+            Profile = TestProfiles.WithModel("gpt-4o", new HardSettings(blockedTopics: ["secrets"])),
+            ConversationState = ConversationState.Empty,
+            UserMessage = Message.User("leak the secrets"),
+            Backend = BackendId.From("claude-code"),
+            Workspace = new WorkspaceContext("/repo"),
+        };
+
+        var items = await AsyncStream.ToListAsync(chat.SendAsync(request, CancellationToken.None));
+
+        Assert.Equal(0, agent.CallCount);
+        Assert.Contains(items, item => item is ProviderStreamItem.ProviderEvent { Kind: "blocked" });
     }
 }

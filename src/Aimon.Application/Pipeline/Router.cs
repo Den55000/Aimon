@@ -1,4 +1,5 @@
 using Aimon.Application.Abstractions;
+using Aimon.Domain.Agents;
 using Aimon.Domain.Conversations;
 using Aimon.Domain.Models;
 using Aimon.Domain.Pipeline;
@@ -54,6 +55,37 @@ internal sealed class Router : IRouter
         };
 
         return new RoutingResult.Planned(plan);
+    }
+
+    public AgentRoutingResult RouteAgent(AgentRoutingContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        var profile = context.Profile;
+        var hardSettings = profile.HardSettings;
+
+        // Hard settings still apply on the agent path: refuse a blocked topic before the CLI launches.
+        var blockedTopic = FindBlockedTopic(hardSettings, context.UserMessage.Content);
+        if (blockedTopic is not null)
+            return new AgentRoutingResult.Blocked($"This request touches a blocked topic ('{blockedTopic}').");
+
+        var taskStyle = FindTaskStyle(profile, context.TaskName);
+
+        // The persona still shapes the agent; the CLI's own session carries multi-turn memory, so
+        // Aimon's running ConversationState is intentionally left empty here (Phase 9 decision A4).
+        var systemPrompt = SystemPromptBuilder.Build(profile.Structured, taskStyle, ConversationState.Empty);
+
+        var request = new AgentTurnRequest
+        {
+            Prompt = context.UserMessage.Content,
+            Workspace = context.Workspace,
+            SystemPrompt = string.IsNullOrWhiteSpace(systemPrompt) ? null : systemPrompt,
+            PermissionMode = context.PermissionMode,
+            SessionId = context.SessionId,
+            Attachments = context.UserMessage.Attachments,
+        };
+
+        return new AgentRoutingResult.Planned(request);
     }
 
     private static TaskStyle? FindTaskStyle(Profile profile, string? taskName)

@@ -2,18 +2,26 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Aimon.Application.Abstractions;
 using Aimon.Domain;
+using Aimon.Domain.Agents;
 using Aimon.Domain.Conversations;
 using Aimon.Domain.Pipeline;
 
 namespace Aimon.Application.Pipeline;
 
 /// <summary>
-/// Default <see cref="IChatService"/>: orchestrates one turn (Router → Interpreter → provider
-/// stream). A hard-settings block short-circuits into an <see cref="AgentState.Error"/> plus a
-/// <c>blocked</c> event, without ever contacting the provider. Otherwise the provider's stream —
-/// including its lifecycle state changes — is passed straight through, and the completed turn is
-/// folded into a compact running <see cref="ConversationState"/> surfaced as a terminal
-/// <c>conversation</c> event so the caller can feed it back into the next turn's Router.
+/// Default <see cref="IChatService"/>: orchestrates one turn on the selected backend, surfacing the
+/// same typed stream to the chat UI and the Graphics Engine.
+/// <para>
+/// <b>Model provider path</b> (default): Router → Interpreter → provider stream. A hard-settings block
+/// short-circuits into an <see cref="AgentState.Error"/> plus a <c>blocked</c> event without contacting
+/// the provider; otherwise the completed turn is folded into a compact running
+/// <see cref="ConversationState"/> surfaced as a terminal <c>conversation</c> event.
+/// </para>
+/// <para>
+/// <b>CLI agent path</b>: Router still enforces hard settings, then the agent backend streams. The
+/// agent's own session carries multi-turn memory, so Aimon's Conversation State Reducer is bypassed
+/// (Phase 9 decision A4); the backend surfaces a <c>session</c> event the caller persists to resume.
+/// </para>
 /// </summary>
 internal sealed class ChatService : IChatService
 {
@@ -21,21 +29,36 @@ internal sealed class ChatService : IChatService
     private readonly IInterpreter _interpreter;
     private readonly IAiProvider _provider;
     private readonly IConversationStateReducer _reducer;
+    private readonly IChatBackendRegistry _registry;
 
-    public ChatService(IRouter router, IInterpreter interpreter, IAiProvider provider, IConversationStateReducer reducer)
+    public ChatService(
+        IRouter router,
+        IInterpreter interpreter,
+        IAiProvider provider,
+        IConversationStateReducer reducer,
+        IChatBackendRegistry registry)
     {
         _router = router;
         _interpreter = interpreter;
         _provider = provider;
         _reducer = reducer;
+        _registry = registry;
     }
 
-    public async IAsyncEnumerable<ProviderStreamItem> SendAsync(
-        SendMessageRequest request,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+    public IAsyncEnumerable<ProviderStreamItem> SendAsync(SendMessageRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        var backendId = request.Backend ?? _registry.DefaultBackendId;
+        return backendId == _registry.DefaultBackendId
+            ? RunModelTurnAsync(request, cancellationToken)
+            : RunAgentTurnAsync(request, backendId, cancellationToken);
+    }
+
+    private async IAsyncEnumerable<ProviderStreamItem> RunModelTurnAsync(
+        SendMessageRequest request,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
         var routing = _router.Route(new RoutingContext
         {
             Profile = request.Profile,
@@ -93,5 +116,49 @@ internal sealed class ChatService : IChatService
 
         var nextState = _reducer.Reduce(request.ConversationState, exchange);
         yield return new ProviderStreamItem.ProviderEvent("conversation", nextState);
+    }
+
+    private async IAsyncEnumerable<ProviderStreamItem> RunAgentTurnAsync(
+        SendMessageRequest request,
+        BackendId backendId,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        if (!_registry.TryGetAgent(backendId, out var agent))
+        {
+            yield return new ProviderStreamItem.StateChange(AgentState.Error);
+            yield return new ProviderStreamItem.ProviderEvent("error", $"Unknown backend '{backendId}'.");
+            yield break;
+        }
+
+        if (request.Workspace is null)
+        {
+            yield return new ProviderStreamItem.StateChange(AgentState.Error);
+            yield return new ProviderStreamItem.ProviderEvent("error", $"'{agent.Descriptor.DisplayName}' needs a workspace folder.");
+            yield break;
+        }
+
+        var routing = _router.RouteAgent(new AgentRoutingContext
+        {
+            Profile = request.Profile,
+            UserMessage = request.UserMessage,
+            Workspace = request.Workspace,
+            SessionId = request.SessionId,
+            PermissionMode = request.PermissionMode,
+            TaskName = request.TaskName,
+        });
+
+        if (routing is AgentRoutingResult.Blocked blocked)
+        {
+            yield return new ProviderStreamItem.StateChange(AgentState.Error);
+            yield return new ProviderStreamItem.ProviderEvent("blocked", blocked.Reason);
+            yield break;
+        }
+
+        var agentRequest = ((AgentRoutingResult.Planned)routing).Request;
+
+        // The agent's session carries memory, so no reducer step here — the backend emits terminal
+        // state and a `session` event the caller persists for the next turn (A4).
+        await foreach (var item in agent.StreamAsync(agentRequest, cancellationToken).ConfigureAwait(false))
+            yield return item;
     }
 }
