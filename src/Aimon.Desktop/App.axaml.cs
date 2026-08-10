@@ -45,6 +45,7 @@ public partial class App : Avalonia.Application
         services.AddAimonInfrastructure();
 
         services.AddSingleton<IImagePicker, StorageProviderImagePicker>();
+        services.AddSingleton<IWorkspacePicker, StorageProviderWorkspacePicker>();
 
         services.AddTransient<AvatarViewModel>();
         services.AddTransient<MainViewModel>();

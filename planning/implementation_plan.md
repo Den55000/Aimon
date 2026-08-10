@@ -568,6 +568,34 @@ hard-settings-blocked request is refused locally before the CLI launches.
 confirm/approval permission round-trip (full-auto only for now), MCP-config passthrough, and any
 non-desktop transport.
 
+**Status (2026-08-10): ✅ Done.** Aimon drives Claude Code as a first-class backend. **Domain**
+(`Aimon.Domain.Agents`): `BackendId`, `WorkspaceContext`, `AgentSessionId`, `AgentPermissionMode`,
+and `AgentTurnRequest`. **Application**: the `IAgentBackend` port + `BackendDescriptor` /
+`BackendAvailability` / `BackendKind` / `BackendAuthKind`, and `IChatBackendRegistry`
+(`ChatBackendRegistry` wraps the OpenAI provider as the **default** backend, so the model path is
+unchanged). `Router.RouteAgent` **enforces hard settings** and builds the persona system prompt with
+an **empty ConversationState** (A4 — the CLI carries memory); backend/workspace/session are threaded
+through `SendMessageRequest`; `ChatService` dispatches model vs. agent turns — the agent path **skips
+the reducer** and passes the stream through. **Infrastructure** (`Aimon.Infrastructure.Agents`):
+`IProcessRunner`/`ProcessRunner` (stdin prompt, stderr drain, **process-tree kill** on cancel),
+`CliAgentProcessHost` (Working → mapped items → Idle / Error+`agent-error`), `CliExecutableResolver`
+(PATH + Windows `.cmd` shim wrapping via `cmd.exe`), and the Claude Code adapter — a `stream-json`
+mapper (session/text/`tool`/`file-edit`/`usage`), an argv builder (`-p --output-format stream-json
+--verbose`, `--permission-mode bypassPermissions` for A3, `--resume` for A4, `--append-system-prompt`
+for the persona), and a `--version` availability probe. Auth is the CLI's own login (A2). **Desktop**:
+a **backend picker**, a **workspace folder picker** (`IWorkspacePicker`) with a "can modify files"
+warning, an availability/version indicator, agent tool/file-edit events rendered as bubbles, the
+avatar driven by the agent's `AgentState`, and the **session id persisted** on the conversation for
+resume. **Extensibility**: `docs/adr/0001-agentic-cli-backends.md` documents the four extension
+points (descriptor + argv builder + event mapper + registration) and the per-CLI specifics for the
+next adapters. Verified: `dotnet build -c Release` → 0 warnings / 0 errors; `dotnet test` → **126
+passing** (excluding Live) — registry, `RouteAgent`, and ChatService agent-path (Application);
+`stream-json` mapper fixtures, process-host lifecycle, argv/availability (Infrastructure); and
+backend-picker wiring (Desktop) — plus a **gated live smoke test** (`AIMON_CLAUDE_LIVE=1`) that runs
+a real one-shot `claude -p` and a session resume. **Out of scope / deferred:** the
+Codex/Cursor/Copilot adapters (seams + ADR only), a confirm/approval permission UI (full-auto only),
+and MCP-config passthrough.
+
 ### Phase 10 — Stub billing / licensing & quota (per D2)
 **Goal:** the pricing tiers have real client-side seams against a mock backend.
 
