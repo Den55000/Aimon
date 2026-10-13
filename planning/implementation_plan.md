@@ -35,7 +35,7 @@ These were confirmed with the product owner and shape the plan below.
 |---|----------|-------------------|
 | D1 | **Graphics = staged "reactions first."** A **semantic-state-driven frame system** is the initial target: the AI's lifecycle state (`Idle`, `Listening`, `Working`, `Error`, …) selects which set of frames/animation to load and play. | Lowest risk, fastest to a testable product. The `IGraphicsEngine` is a seam; a richer avatar engine can replace the frame player later. Future: state can also be derived from conversation state, not just the request lifecycle. |
 | D2 | **Scope = local desktop app + *stub* billing.** Ship the desktop app with **BYO API keys** stored locally; include the client-side account / licensing / quota **abstractions** with a mock backend so a real subscription/proxy server is a drop-in later. **No server is built in this plan.** | Keeps the plan focused on a usable product while leaving clean seams for the pricing tiers. |
-| D3 | **Providers = OpenAI first.** Implement the OpenAI adapter behind an `IAiProvider` port; Anthropic, Google, and local/OpenAI-compatible endpoints are added later without touching Application/Domain. | Single well-supported streaming provider to validate the whole pipeline. |
+| D3 | **Providers = OpenAI first.** Implement the OpenAI adapter behind an `IAiProvider` port; Anthropic, Google, and local/OpenAI-compatible endpoints are added later without touching Application/Domain. | Single well-supported streaming provider to validate the whole pipeline. The rest of the fleet (Claude, Gemini, DeepSeek, Grok) lands in **Phase 10**; the remaining coding CLIs in **Phase 11**. |
 
 ---
 
@@ -73,7 +73,9 @@ Domain and Application never reference a UI framework, an HTTP client, or a spec
 | Hard Settings (safety blocks) | Domain (rules) + Application (enforcement) | `HardSettings`, enforced by Router/Interpreter |
 | Router (build context + execution plan) | Application | `IRouter` |
 | Interpreter (build provider request) | Application | `IInterpreter` |
-| Commercial AI Provider (stream text + events) | Infrastructure | `IAiProvider` (OpenAI adapter) |
+| Commercial AI Provider (stream text + events) | Infrastructure | `IAiProvider` (OpenAI; +Claude/Gemini/DeepSeek/Grok in Phase 10) |
+| Agentic CLI backend (subprocess in a workspace) | Infrastructure | `IAgentBackend` (Claude Code; +Codex/Cursor/Copilot in Phase 11) |
+| Backend catalog & selection (providers + agents) | Application | `IChatBackendRegistry`, `BackendDescriptor` |
 | Graphics Compiler (sketches → animation library) | Infrastructure + tooling | `IGraphicsCompiler` |
 | Graphics Engine (state/stream → visuals) | Application port + Desktop renderer | `IGraphicsEngine` |
 | Conversation State Reducer | Application | `IConversationStateReducer` |
@@ -167,7 +169,9 @@ live in the OS secret store (§3.6).
 ### 3.7 Testing strategy (applies to every phase)
 
 - **Unit** — Domain rules and Application use cases with mocked ports (xUnit + NSubstitute).
-- **Contract/replay** — provider adapter tested against recorded SSE fixtures (no network).
+- **Contract/replay** — provider adapters tested against recorded SSE fixtures (no network); from
+  Phase 10 every `IAiProvider` must pass one **shared contract suite**, and every CLI agent mapper is
+  driven by recorded `stream-json` fixtures, so adding a backend never means re-writing its tests.
 - **Live integration** — a small OpenAI smoke test gated behind an env flag / API key.
 - **UI/VM** — `Avalonia.Headless` tests for ViewModels and key views.
 - **Demo script** — every phase ends with a manual demo that exercises its acceptance criteria.
@@ -427,7 +431,7 @@ loads sorted, activate loads the full profile + raises the event, delete removes
 gated without a selection). Verified: `dotnet build -c Release` → 0 warnings / 0 errors; `dotnet test`
 → 90/90 passing.
 
-**Deferred to Phase 11 (hardening/polish):** file-dialog **import/export** UI (the store-level
+**Deferred to Phase 13 (hardening/polish):** file-dialog **import/export** UI (the store-level
 export/import already exists from Phase 2 — only the picker remains); a dedicated **settings editor**
 for hard settings / model preferences (currently authored via the compiler + profile files); loading a
 **profile-specific animation library** (the avatar uses the built-in library until a library registry
@@ -455,7 +459,8 @@ vision content-part serialization; Router tests for the mode → tool mapping; a
 ask about it; force generation via `Image` mode; `Chat` never generates.
 
 **Status (2026-08-09): ✅ Done.** _(Added after Phase 7; the previously-planned billing and hardening
-phases are now Phase 10 and Phase 11, after agentic CLI integration was later inserted as Phase 9.)_ A
+phases are now Phase 12 and Phase 13, after the agentic CLI integration and the backend fleet were
+later inserted as Phases 9–11.)_ A
 turn can now generate and consume images, OpenAI-only.
 **Application/Domain**: a per-turn `TurnMode` (`Auto`/`Chat`/`Image`) flows from `SendMessageRequest`
 through `RoutingContext`, the `Router`, `ExecutionPlan`, and `ProviderRequest`; the Router sets
@@ -596,7 +601,144 @@ a real one-shot `claude -p` and a session resume. **Out of scope / deferred:** t
 Codex/Cursor/Copilot adapters (seams + ADR only), a confirm/approval permission UI (full-auto only),
 and MCP-config passthrough.
 
-### Phase 10 — Stub billing / licensing & quota (per D2)
+### Phase 10 — Model-provider fleet (Gemini, Claude, DeepSeek, Grok)
+
+**Goal:** the *model* half of the backend picker becomes a **fleet** — any number of commercial chat
+providers side by side, selectable per turn under the same persona, hard settings, and avatar — and
+adding provider N+1 becomes an options record plus a mapper, never a pipeline or UI change.
+
+**Why now:** Phase 9 built the backend seam but only generalized the *agent* half. The registry still
+wraps exactly one `IAiProvider` as "the model provider" and `ChatService` takes that single provider by
+constructor injection, so a second HTTP provider cannot coexist today. This phase makes the registry
+symmetric and then fills it.
+
+**Decisions for this phase (to confirm with the product owner):**
+
+| # | Decision | Consequence for the design |
+|---|----------|----------------------------|
+| B1 | **Symmetric registry.** `IChatBackendRegistry` stops privileging one model provider: it holds **N `IAiProvider`s and N `IAgentBackend`s** keyed by `BackendId`, and gains `TryGetProvider`. `ChatService` resolves the provider *from the registry* instead of taking one injected `IAiProvider`. OpenAI stays the default backend id. | The one structural change in the phase; every provider after it is purely additive. Turns that name no backend behave exactly as today. |
+| B2 | **OpenAI-compatible family first.** DeepSeek and Grok (xAI) — and Gemini via its OpenAI-compatibility endpoint — speak the OpenAI chat-completions wire format, so they are **configurations** of one reusable `OpenAICompatibleProvider` (base URL, secret-key name, headers, capability flags), not hand-written adapters. | Three providers for the cost of options records + fixtures. Also makes local / OpenAI-compatible endpoints (Ollama, LM Studio, vLLM) a later config entry rather than a code change. |
+| B3 | **Native adapters only where the wire format genuinely differs.** Anthropic (Messages API, its own SSE event names, persona as a top-level `system` field) gets a real adapter. Gemini gets a native `streamGenerateContent` adapter **only if** the compat endpoint proves lossy for what Aimon uses (streaming, vision, tool-calling). | Fidelity where it matters without four bespoke HTTP clients. Open question 6 in §7 decides the Gemini branch before the phase starts. |
+| B4 | **Per-provider keys behind one settings surface.** Each provider declares its own `SecretKeyName`; the Desktop settings section lists every *registered* provider with a key box and a key-set indicator, replacing today's single hardcoded `"openai"` box. | The key UI scales with the registry — no new UI per provider. |
+| B5 | **Data-driven model catalog.** Model ids live in a shipped `config/models.json` (per provider: id, display name, capability flags — streaming / vision / image generation / tools — and optional context window), loaded at startup, **plus a free-text override** so a model released tomorrow is usable today. | Model line-ups churn far faster than Aimon releases; adding one must never require a rebuild. |
+
+**Application / Domain:**
+
+- **Registry generalization (B1).** `IChatBackendRegistry` gains `TryGetProvider(BackendId, out IAiProvider)`
+  alongside `TryGetAgent`; `Descriptors` lists both kinds in one ordered catalog; `DefaultBackendId` comes
+  from configuration rather than "whichever `IAiProvider` happened to be injected". `ChatService`
+  dispatches on the resolved backend's `Kind`, not on `id == DefaultBackendId`.
+- **Capabilities become data, not constants.** `BackendDescriptor` gains the flags the Router needs
+  (`SupportsVision`, `SupportsTools`, `SupportsImageGeneration`, `SupportsStreaming`), sourced from the
+  provider's options / catalog entry — replacing the hardcoded `SupportsImages = true` the registry
+  currently stamps on the model backend.
+- **Router honours them.** `ImageToolEnabled` is set in `Auto` only when the selected backend advertises
+  image generation; a turn carrying `ImageAttachment`s against a text-only backend is refused locally
+  with a clear reason (the existing `blocked` path) instead of failing at the wire; **hard settings are
+  still enforced first** — `IsModelBlocked` is extended to match `provider:model` as well as a bare model
+  id, so a profile can block one model or a whole provider.
+- **One availability probe for both kinds.** `CheckAvailabilityAsync` is hoisted so the registry can
+  answer it for *any* `BackendId`: a CLI agent probes its executable (as today), a model provider reports
+  whether its key is present in `ISecretStore`. The picker greys out an unusable provider exactly the way
+  it greys out an uninstalled CLI.
+- **Fail fast on mismatch.** A profile's `ModelRef.Provider` must agree with the selected backend; the
+  Interpreter validates this once and reports it, rather than silently sending a Gemini model id to
+  OpenAI (today the Desktop always builds `new ModelRef("openai", …)`).
+
+**Infrastructure:**
+
+- Extract the reusable core of `OpenAIProvider` into an **`OpenAICompatibleProvider`** parameterized by an
+  options record (base address, secret-key name, extra headers, capability flags, image model), and
+  register **OpenAI / DeepSeek / Grok / Gemini-compat** as instances of it. Several `IAiProvider`s coexist
+  via **keyed DI** (`AddKeyedSingleton` / keyed typed `HttpClient`s), each with its own timeout and
+  resilience policy.
+- **`AnthropicProvider`** — `/v1/messages` with `stream: true` and the `x-api-key` + `anthropic-version`
+  headers; maps `message_start` / `content_block_delta` / `message_delta` / `message_stop` to `TextDelta` /
+  `StateChange` / a `usage` `ProviderEvent`; persona in the top-level `system` field; vision as base64
+  `image` content blocks.
+- **`GeminiProvider`** (only if B3 triggers) — `:streamGenerateContent` with `contents` / `parts`,
+  `inline_data` for vision, `systemInstruction` for the persona.
+- **A shared provider contract suite.** One abstract xUnit base class every `IAiProvider` must pass
+  against its own recorded SSE fixtures: text streaming order, cancellation mid-stream, transport error →
+  `AgentState.Error`, persona placement, and vision serialization when the descriptor advertises it. This
+  is the test-side scalability lever — a new provider inherits the suite instead of re-writing it.
+
+**Desktop UX:**
+
+- The backend picker lists model providers **and** CLI agents from one registry; choosing a provider swaps
+  the model dropdown to that provider's catalog entries (B5), with the free-text override intact.
+- A **Providers & keys** settings section (B4): every registered provider with a key box, a
+  key-set/not-set indicator, and Save/Clear — which also retires the key half of the Phase 7 settings
+  deferral.
+- The chosen backend + model are written to the active profile's `ModelPreferences.Preferred`, so a profile
+  remembers the model it was authored for.
+
+**Adding provider N+1 (the extensibility contract this phase must deliver):** for an OpenAI-compatible
+provider — an options record, a secret-key name, a `config/models.json` entry, one DI registration, and
+fixtures. For a native-protocol provider — the same, plus one stream mapper that passes the shared
+contract suite. Documented in **ADR 0002 — model-provider fleet**, the counterpart to ADR 0001.
+
+**Acceptance / test:** unit — the registry lists and resolves N providers + N agents by id; Router
+capability gating (no image tool on a backend without it; vision refused on a text-only backend); hard
+settings block `provider:model`; a `ModelRef` / backend mismatch fails fast. Contract/replay — the shared
+suite green for every provider against recorded fixtures, no network. Gated live smoke — one per provider
+behind its own env flag (`AIMON_OPENAI_API_KEY`, `AIMON_ANTHROPIC_API_KEY`, `AIMON_GEMINI_API_KEY`,
+`AIMON_DEEPSEEK_API_KEY`, `AIMON_XAI_API_KEY`), skipped when absent. Demo: one profile, one question,
+answered in turn by OpenAI, Claude, Gemini, DeepSeek and Grok — same persona, same avatar behaviour, the
+model switch visible in the picker; a key-less provider is greyed out with guidance; a hard-settings-blocked
+provider is refused before any request leaves the machine.
+
+**Out of scope (this phase):** provider-specific extras (Anthropic extended thinking, Gemini grounding,
+xAI live search), image *generation* on non-OpenAI providers (vision input is in scope), local /
+self-hosted endpoints (enabled by B2 but not configured here), automatic failover between providers, and
+cost/token accounting (Phase 12).
+
+### Phase 11 — Remaining agentic CLI backends (Codex, Cursor, Copilot)
+
+**Goal:** the *agent* half of the fleet is complete — Codex CLI, Cursor CLI (`cursor-agent`), and GitHub
+Copilot CLI join Claude Code behind the same picker, each landing as the four small pieces ADR 0001
+prescribes, with no pipeline or UI change.
+
+**Per adapter (×3), reusing `CliAgentProcessHost`, `ProcessRunner`, and `CliExecutableResolver` unchanged:**
+
+1. a `BackendDescriptor` (id, display name, `Kind = CliAgent`, capability flags, `AuthKind = CliNativeLogin`);
+2. an **argv/env builder** turning an `AgentTurnRequest` into that CLI's non-interactive streaming
+   invocation (prompt via **stdin** to dodge shell quoting; persona via the CLI's system-prompt flag;
+   full-auto per Phase 9 decision A3);
+3. an **`ICliStreamMapper`** translating its per-line output into ADR 0001's shared event vocabulary —
+   `session` / `tool` / `file-edit` / `usage` / `agent-error` — dropping anything unrecognized and **never
+   throwing**;
+4. one line of registration in `Aimon.Infrastructure.DependencyInjection`.
+
+**Cross-cutting work this phase adds:**
+
+- **Pin the real contracts.** §7 open question 5 is answered here, per installed version: each CLI's
+  install-detection command, non-interactive streaming argv, output schema, and session-resume flag are
+  confirmed against a real run and **recorded as fixtures** under
+  `tests/Aimon.Infrastructure.Tests/Fixtures/<cli>/`, with a refresh script in `build/` so fixtures can be
+  re-captured when a CLI ships a new schema.
+- **Sessions become a capability, not an assumption.** Phase 9 bypasses the Conversation State Reducer on
+  the agent path because Claude Code carries its own session (A4). A CLI advertising
+  `SupportsSessions = false` must instead go **through** the reducer, so `ChatService` keys that decision
+  off the descriptor rather than off "is this an agent".
+- **Per-CLI options + settings.** An options record per CLI (executable path override, default model,
+  permission mode, extra args/env) surfaced in settings, so a user with a non-PATH install can point Aimon
+  at it — and the picker shows per-CLI install/login guidance from its availability probe.
+- ADR 0001's "specifics to pin" table is updated to the confirmed contract for all four CLIs.
+
+**Acceptance / test:** contract/replay — mapper fixture tests per CLI (init → session id, assistant text, a
+tool use, a file edit, terminal result + usage) with no real process via `IProcessRunner`; availability
+parses each `--version` and a missing executable yields an unavailable descriptor; the registry lists all
+four agents; `ChatService` uses the reducer for a `SupportsSessions = false` backend and skips it
+otherwise. Gated live smoke per CLI (`AIMON_CODEX_LIVE=1`, `AIMON_CURSOR_LIVE=1`, `AIMON_COPILOT_LIVE=1`)
+in a temp workspace. Demo: the same small change requested in the same folder through each of the four CLIs
+under the same persona — text streams, tool/file-edit bubbles appear, the avatar moves Idle→Working→Idle,
+and a follow-up turn resumes where the CLI supports it.
+
+**Out of scope (this phase):** a confirm/approval permission round-trip (still full-auto only), MCP-config
+passthrough, running two agents concurrently on one workspace, and any non-desktop transport.
+
+### Phase 12 — Stub billing / licensing & quota (per D2)
 **Goal:** the pricing tiers have real client-side seams against a mock backend.
 
 - `ILicenseService` / `IQuotaService` with a **mock** backend: tier (Free/$1/$7–25/$40–100/PAYG),
@@ -607,7 +749,7 @@ and MCP-config passthrough.
 **Acceptance / test:** unit tests for gating rules per tier (e.g., Free = limited custom profiles /
 low-tier models); demo: switching mock tier changes which models/profiles are allowed.
 
-### Phase 11 — Hardening, packaging & docs
+### Phase 13 — Hardening, packaging & docs
 **Goal:** shippable initial release.
 
 - End-to-end resilience (timeouts, retries, cancellation), consistent error surfacing, log review.
@@ -623,8 +765,9 @@ docs let a new contributor build and run.
 ## 5. Phase sequencing & dependencies
 
 ```
-0 ─► 1 ─► 2 ─► 3 ─► 4 ─► 5 ─► 6 ─► 7 ─► 8 ─► 9 ─► 10 ─► 11
-                 └► (walking skeleton demoable here)
+                                                    ┌─► 10 (model-provider fleet) ─┐
+0 ─► 1 ─► 2 ─► 3 ─► 4 ─► 5 ─► 6 ─► 7 ─► 8 ─► 9 ─────┤                              ├─► 12 ─► 13
+                 └► (walking skeleton demoable here) └─► 11 (remaining CLI agents) ─┘
 ```
 
 - 0→1→2→3 are strictly sequential (foundation → skeleton).
@@ -634,8 +777,12 @@ docs let a new contributor build and run.
   vision.
 - 9 adds agentic **CLI backends** (Claude Code) onto the Phase 3 streaming contract + Phase 7 chat
   UI / Phase 6 avatar; it depends on 3 (the `ProviderStreamItem` stream) and 6–7 (avatar + chat UI),
-  and is independent of billing so 9 and 10 can proceed in either order.
-- 10 layers billing onto 7; 11 hardens everything.
+  and is independent of billing so 9 and 12 can proceed in either order.
+- 10 and 11 fill out the two halves of the backend fleet and both build on 9's registry + ADR 0001.
+  They are functionally independent of each other, but 10 makes `IChatBackendRegistry` symmetric, so
+  if both are in flight **10 lands first** — otherwise the second one rewrites the registry and DI
+  registration a second time.
+- 12 layers billing onto 7 and meters whatever 10/11 registered; 13 hardens everything.
 
 ---
 
@@ -663,11 +810,15 @@ docs let a new contributor build and run.
    sprite sheets?) and the authoring workflow for non-artists.
 2. **Phase 1/5:** the concrete field set of the *structured* profile (personality axes,
    interaction rules, per-task overrides) — to be finalized as the compiler is designed.
-3. **Phase 3/10:** default model list and how tier gating maps to specific OpenAI models.
-4. **Phase 10:** which capabilities are metered vs. BYO-key-only per tier.
-5. **Phase 9:** exact non-interactive streaming contract per CLI (argv, output schema, session-resume
+3. **Phase 3/12:** default model list and how tier gating maps to specific models per provider.
+4. **Phase 12:** which capabilities are metered vs. BYO-key-only per tier.
+5. **Phase 11:** exact non-interactive streaming contract per CLI (argv, output schema, session-resume
    flag) for Codex / Cursor / Copilot — to be pinned as each adapter is written, since these CLIs
    evolve quickly.
+6. **Phase 10:** does Gemini's OpenAI-compatibility endpoint cover streaming, vision, and tool-calling
+   faithfully enough to skip a native adapter (decision B3), or is `streamGenerateContent` required?
+7. **Phase 10:** does the model catalog ship as static data (`config/models.json`) only, or also refresh
+   from each provider's `/models` endpoint — and how is a stale entry surfaced to the user?
 
 ---
 
