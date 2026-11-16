@@ -1,6 +1,7 @@
-[!IMPORTANT]
-**This project is discontinued.** 
-Development continues in [Den55000/omorion](https://github.com/Den55000/omorion), which is currently private and will be made public at some point in the future. This repository is archived and kept for reference only.
+> [!IMPORTANT]
+> **This project is discontinued.** Development continues in
+> [Den55000/omorion](https://github.com/Den55000/omorion), which is currently private and will be
+> made public at some point in the future. This repository is archived and kept for reference only.
 
 # Aimon
 
